@@ -162,7 +162,7 @@ Follow these steps exactly to get TruthLens running locally.
 
 **Option A: Clone from GitHub** (if you've already pushed it)
 ```bash
-git clone https://github.com/YOUR_USERNAME/truthlens.git
+git clone https://github.com/Rajarikam117/truthlens.git
 cd truthlens
 ```
 
