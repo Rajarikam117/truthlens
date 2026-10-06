@@ -1,8 +1,5 @@
 import { useState, useRef } from "react";
 
-const GROQ_API_KEY   = process.env.REACT_APP_GROQ_API_KEY;
-const TAVILY_API_KEY = process.env.REACT_APP_TAVILY_API_KEY;
-
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -158,6 +155,15 @@ const V_COLOR    = { REAL:"var(--real)", FAKE:"var(--fake)", UNCERTAIN:"var(--un
 const V_CLASS    = { REAL:"real", FAKE:"fake", UNCERTAIN:"uncertain" };
 const V_EMOJI    = { REAL:"✓", FAKE:"✗", UNCERTAIN:"?" };
 
+const getApiErrorMessage = (data, fallback) => {
+  const error = data?.error || data?.detail || data?.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    return error.message || error.error || JSON.stringify(error);
+  }
+  return fallback;
+};
+
 // Convert file to base64
 const toBase64 = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -214,14 +220,11 @@ export default function App() {
 
   // ── Extract text from image using Groq vision ───────────────────────────────
   const extractTextFromImage = async (base64, mimeType) => {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch("/api/groq/openai/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",  // Groq vision model
+        model: "qwen/qwen3.8-27b", //"meta-llama/llama-4-scout-17b-16e-instruct",  // Groq vision model
         max_tokens: 1024,
         messages: [{
           role: "user",
@@ -240,7 +243,7 @@ export default function App() {
     });
     if (!res.ok) {
       const e = await res.json();
-      throw new Error("Vision error: " + (e?.error?.message || res.status));
+      throw new Error("Vision error: " + getApiErrorMessage(e, res.status));
     }
     const data = await res.json();
     return data?.choices?.[0]?.message?.content || "";
@@ -248,11 +251,6 @@ export default function App() {
 
   // ── Main analyze function ───────────────────────────────────────────────────
   const analyze = async () => {
-    if (!GROQ_API_KEY || !TAVILY_API_KEY) {
-      setError("⚠ Missing API keys.\n\nAdd to .env:\nREACT_APP_GROQ_API_KEY=gsk_...\nREACT_APP_TAVILY_API_KEY=tvly_...\n\nThen restart: npm start");
-      return;
-    }
-
     const isImage = tab === "image";
     const content = tab === "text" ? text.trim() : tab === "url" ? url.trim() : "";
 
@@ -299,11 +297,10 @@ export default function App() {
       // ── TAVILY LIVE SEARCH ─────────────────────────────────────────────────
       const searchQuery = newsContent.length > 200 ? newsContent.slice(0, 200) : newsContent;
 
-      const tavilyRes = await fetch("https://api.tavily.com/search", {
+      const tavilyRes = await fetch("/api/tavily/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          api_key: TAVILY_API_KEY,
           query: searchQuery,
           search_depth: "advanced",
           include_answer: true,
@@ -322,7 +319,7 @@ export default function App() {
 
       if (!tavilyRes.ok) {
         const e = await tavilyRes.json();
-        throw new Error("Tavily error: " + (e?.detail || e?.message || tavilyRes.status));
+        throw new Error("Tavily error: " + getApiErrorMessage(e, tavilyRes.status));
       }
 
       const tavilyData    = await tavilyRes.json();
@@ -383,14 +380,11 @@ Respond ONLY with valid JSON (no markdown, no code fences):
       currentStep++;
       setStep(currentStep);
 
-      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const groqRes = await fetch("/api/groq/openai/v1/chat/completions", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-20b",
           temperature: 0.1,
           max_tokens: 1024,
           messages: [
@@ -402,7 +396,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
 
       if (!groqRes.ok) {
         const e = await groqRes.json();
-        throw new Error("Groq error: " + (e?.error?.message || groqRes.status));
+        throw new Error("Groq error: " + getApiErrorMessage(e, groqRes.status));
       }
 
       const groqData = await groqRes.json();
@@ -415,7 +409,11 @@ Respond ONLY with valid JSON (no markdown, no code fences):
       setResult(JSON.parse(match[0]));
 
     } catch (e) {
-      setError("Analysis failed: " + (e.message || "Unknown error. Please try again."));
+      const message = e?.message || "Unknown error. Please try again.";
+      const isNetworkError = e instanceof TypeError && /fetch|network|failed/i.test(message);
+      setError(isNetworkError
+        ? "Analysis failed: The browser could not reach one of the AI services. Check your internet connection, DNS, VPN, or firewall, then try again."
+        : "Analysis failed: " + message);
     } finally {
       setLoading(false);
     }
@@ -528,15 +526,6 @@ Respond ONLY with valid JSON (no markdown, no code fences):
               </>)}
             </div>
           </div>
-
-          {(!GROQ_API_KEY || !TAVILY_API_KEY) && (
-            <div className="warn">
-              ⚠ Missing API keys. Add both to your .env file:<br />
-              <strong>REACT_APP_GROQ_API_KEY=gsk_...</strong><br />
-              <strong>REACT_APP_TAVILY_API_KEY=tvly_...</strong><br />
-              Then restart: <strong>npm start</strong>
-            </div>
-          )}
 
           {loading && steps.length > 0 && (
             <div className="progress-box">
