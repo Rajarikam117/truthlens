@@ -154,7 +154,7 @@ app.post("/api/analyze", async (req, res) => {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY || ""}`
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-20b",
         temperature: 0.1,
         max_tokens: 800,
         response_format: { type: "json_object" },
@@ -189,7 +189,7 @@ app.post("/api/analyze", async (req, res) => {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.GROQ_API_KEY || ""}` },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "openai/gpt-oss-20b",
           temperature: 0.1,
           max_tokens: 400,
           response_format: { type: "json_object" },
