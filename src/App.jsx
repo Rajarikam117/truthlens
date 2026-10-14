@@ -89,7 +89,7 @@ export default function App() {
         <label htmlFor="website-url">WEBSITE URL</label>
         <div className="url-field">
           <span className="url-icon">↗</span>
-          <input id="website-url" type="url" inputMode="url" autoComplete="url" placeholder="https://example.com/news/article" value={url} onChange={e => setUrl(e.target.value)} required maxLength={2048} disabled={loading}/>
+          <input id="website-url" type="text" inputMode="url" autoComplete="url" placeholder="https://example.com/news/article" value={url} onChange={e => setUrl(e.target.value)} required maxLength={2048} disabled={loading}/>
           <button type="submit" disabled={loading || !url.trim()}>{loading ? <><span className="spinner"/> Checking</> : <>Analyze website <span>→</span></>}</button>
         </div>
         <div className="input-foot"><span>↳ Supports public HTML webpages</span><span>Evidence-first · Source-linked · No image uploads</span></div>
