@@ -242,4 +242,8 @@ app.use((error, _req, res, _next) => {
   res.status(400).json({ error: error?.type === "entity.too.large" ? "Request is too large." : "Invalid request." });
 });
 
-app.listen(PORT, () => console.log(`TruthLens API listening on http://localhost:${PORT}`));
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`TruthLens API listening on http://localhost:${PORT}`));
+}
+
+module.exports = app;
