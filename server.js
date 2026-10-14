@@ -170,7 +170,7 @@ app.post("/api/analyze", async (req, res) => {
       const detail = String(e?.error?.message || "Groq claim extraction failed.");
       console.error("TruthLens Groq claim extraction error:", promptResponse.status, detail);
       return res.status(502).json({ error: detail.includes("Failed to generate JSON")
-        ? "Groq could not produce valid JSON for this model. In Vercel Environment Variables, set GROQ_MODEL to llama-3.3-70b-versatile, then redeploy."
+        ? "Groq could not return valid JSON for this response. Please retry. If the issue persists, check the Vercel function logs."
         : `Groq claim extraction failed (HTTP ${promptResponse.status}). Check GROQ_API_KEY and GROQ_MODEL.` });
     }
     const modelData = await promptResponse.json();
@@ -205,7 +205,7 @@ app.post("/api/analyze", async (req, res) => {
         const detail = String(vd?.error?.message || "Groq evidence assessment failed.");
         console.error("TruthLens Groq claim assessment error:", verifyResponse.status, detail);
         throw new Error(detail.includes("Failed to generate JSON")
-          ? "Groq could not produce valid JSON for a claim assessment. Set GROQ_MODEL to llama-3.3-70b-versatile in Vercel and redeploy."
+          ? "Groq could not return valid JSON for this claim assessment. Please retry. If the issue persists, check the Vercel function logs."
           : `Groq evidence assessment failed (HTTP ${verifyResponse.status}). Check GROQ_MODEL and API access.`);
       }
       let assessment;
