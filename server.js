@@ -144,6 +144,8 @@ app.post("/api/analyze", async (req, res) => {
     const websiteUrl = String(req.body?.url || "").trim();
     if (!websiteUrl) return res.status(400).json({ error: "Enter a website URL." });
     if (websiteUrl.length > 2048) return res.status(400).json({ error: "The URL is too long." });
+    if (!process.env.GROQ_API_KEY) return res.status(503).json({ error: "GROQ_API_KEY is missing. Add it to the server .env file." });
+    if (!process.env.TAVILY_API_KEY) return res.status(503).json({ error: "TAVILY_API_KEY is missing. Add it to the server .env file." });
     const article = await fetchArticle(websiteUrl);
     const promptResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
