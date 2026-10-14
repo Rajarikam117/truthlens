@@ -154,7 +154,7 @@ app.post("/api/analyze", async (req, res) => {
         "Authorization": `Bearer ${process.env.GROQ_API_KEY || ""}`
       },
       body: JSON.stringify({
-        model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
         temperature: 0.1,
         max_tokens: 1400,
         response_format: { type: "json_object" },
@@ -167,7 +167,11 @@ app.post("/api/analyze", async (req, res) => {
     });
     if (!promptResponse.ok) {
       const e = await promptResponse.json().catch(() => ({}));
-      return res.status(promptResponse.status === 401 ? 502 : 502).json({ error: e?.error?.message || "Groq claim extraction failed. Check GROQ_API_KEY and GROQ_MODEL." });
+      const detail = String(e?.error?.message || "Groq claim extraction failed.");
+      console.error("TruthLens Groq claim extraction error:", promptResponse.status, detail);
+      return res.status(502).json({ error: detail.includes("Failed to generate JSON")
+        ? "Groq could not produce valid JSON for this model. In Vercel Environment Variables, set GROQ_MODEL to llama-3.3-70b-versatile, then redeploy."
+        : `Groq claim extraction failed (HTTP ${promptResponse.status}). Check GROQ_API_KEY and GROQ_MODEL.` });
     }
     const modelData = await promptResponse.json();
     const raw = modelData.choices?.[0]?.message?.content || "";
@@ -185,7 +189,7 @@ app.post("/api/analyze", async (req, res) => {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.GROQ_API_KEY || ""}` },
         body: JSON.stringify({
-          model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+          model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
           temperature: 0.1,
           max_tokens: 650,
           response_format: { type: "json_object" },
@@ -197,7 +201,13 @@ app.post("/api/analyze", async (req, res) => {
         signal: AbortSignal.timeout(25_000)
       });
       const vd = await verifyResponse.json().catch(() => ({}));
-      if (!verifyResponse.ok) throw new Error(vd?.error?.message || "Groq evidence assessment failed.");
+      if (!verifyResponse.ok) {
+        const detail = String(vd?.error?.message || "Groq evidence assessment failed.");
+        console.error("TruthLens Groq claim assessment error:", verifyResponse.status, detail);
+        throw new Error(detail.includes("Failed to generate JSON")
+          ? "Groq could not produce valid JSON for a claim assessment. Set GROQ_MODEL to llama-3.3-70b-versatile in Vercel and redeploy."
+          : `Groq evidence assessment failed (HTTP ${verifyResponse.status}). Check GROQ_MODEL and API access.`);
+      }
       let assessment;
       try { assessment = JSON.parse(vd.choices?.[0]?.message?.content || ""); }
       catch { throw new Error("AI returned an invalid evidence assessment."); }
